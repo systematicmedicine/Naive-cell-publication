@@ -2,7 +2,7 @@
 # Author: Cameron
 # Date: 15th February 2024
 #
-# Miscellaneous utility functions for sue in 20240215 aging genes leukocyte analysis.R
+# Miscellaneous utility functions for use in 20240215 aging genes leukocyte analysis.R
 
 ## Define functions
 assign_stars <- function(pval){
