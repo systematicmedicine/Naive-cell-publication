@@ -91,20 +91,21 @@ for (leuk in unique(comb$Immune.cell)){
   t20.prop <- median(t20.genes$prop.exp, na.rm = TRUE)
   t20.pval <- wilcox.test(x = na.omit(t20.genes$prop.exp), y = na.omit(all.genes$prop.exp))$p.value
   
-  t20.plt <- ggplot(data = t20.genes, aes(x = rev(rank), y = prop.exp * 100, fill = direction)) +
+  t20.plt <- ggplot(data = t20.genes, aes(x = Gene.name, y = prop.exp * 100, fill = direction)) +
     geom_col() +
     coord_flip() +
     scale_fill_manual(values = c("dodgerblue3", "darkgoldenrod")) +
     scale_y_continuous(limits = c(0, 100)) +
-    scale_x_discrete(limits = rev(factor(1:20)), breaks = c(1, 5, 10, 15, 20)) +
-    labs(x = "Rank", y = paste("Expression attributable (%)")) +
+    scale_x_discrete(limits = rev(t20.genes$Gene.name)) +
+    labs(x = "", y = paste("Expression attributable (%)")) +
     geom_abline(slope = 0, intercept = all.prop * 100, linetype = "dashed", colour = "red", linewidth=0.3) +
     ggtitle(leuk) +
     theme_classic() +
     theme(
-      axis.text = element_text(size = 8), 
-      axis.title = element_text(size = 8),
-      plot.title = element_text(size = 12)
+      axis.text.y = element_text(size = 4.6),
+      axis.text.x = element_text(size = 6.5),
+      axis.title = element_text(size = 9),
+      plot.title = element_text(size = 11)
     ) +
     guides(fill = guide_legend(title = "Direction of expression change"))
  
@@ -194,18 +195,24 @@ for (k in 1:length(fig1.lst)){
   fig1.lst[[k]] <- fig1.lst[[k]] + ggtitle(title)
 }
 
+# Remove y axis labels from subplots not on left
+for (k in c(2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18)){
+  fig1.lst[[k]] <- fig1.lst[[k]] + theme(axis.text.y = element_blank())
+}
+
 # Combine subplots
 fig1 <- ggarrange(plotlist = fig1.lst,
-                   ncol = 3, nrow = 6,
-                   common.legend = TRUE,
-                   legend = "bottom")
+                  ncol = 3, nrow = 6,
+                  widths = c(1.17, 1, 1, 1),
+                  common.legend = TRUE,
+                  legend = "bottom")
 
 # Write figure 1 to disk
 ggsave("manuscript/Figure 1.tiff", device = "tiff", plot = fig1, dpi = 300, width = 180, height = 270, unit = "mm")
 
 ## Create figure 2
 fig2 <- ggplot(data = cum.med, aes(x = rank, y = naiveT.group * 100)) +
-  geom_path(colour = "gray50", linewidth=1) +
+  geom_path(colour = "gray50", linewidth = 1) +
   geom_abline(slope = 0, intercept = naiveT.stats$all.prop * 100, colour = "red", linetype = "dashed") +
   labs(y = "Median expression attributable to Naive T cells (%)", x = "Top n ranked genes") +
   scale_y_continuous(limits = c(0, 100)) +
