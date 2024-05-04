@@ -68,8 +68,9 @@ comb <- hba %>%
 map.ptr.sig <- comb$rank %>% na.omit() %>% unique() %>% length()
 
 ## Loop through all 18 leukocyte types
-fig1.lst <- list()
-tbl1.lst <- list()
+t20.lst <- list()
+pos20.lst <- list()
+stats.lst <- list()
 
 for (leuk in unique(comb$Immune.cell)){
   
@@ -99,7 +100,7 @@ for (leuk in unique(comb$Immune.cell)){
     scale_x_discrete(limits = rev(t20.genes$Gene.name)) +
     labs(x = "", y = paste("Expression attributable (%)")) +
     geom_abline(slope = 0, intercept = all.prop * 100, linetype = "dashed", colour = "red", linewidth=0.3) +
-    ggtitle(leuk) +
+    ggtitle(fix_cell_name(leuk)) +
     theme_classic() +
     theme(
       axis.text.y = element_text(size = 4.6),
@@ -109,11 +110,36 @@ for (leuk in unique(comb$Immune.cell)){
     ) +
     guides(fill = guide_legend(title = "Direction of expression change"))
  
-  # Update table 1 list
-  tbl1.lst[[length(tbl1.lst) + 1]] <- c(leuk, all.prop, sig.prop, sig.pval, t20.prop, t20.pval)
+  # Top 20 positive ageing genes reported in Peters
+  pos20.genes <- all.genes %>%
+    arrange(rank) %>%
+    filter(direction == "+") %>%
+    .[1:20, ]
   
-  # Update figure 1 list
-  fig1.lst[[length(fig1.lst) + 1]] <- t20.plt
+  pos20.prop <- median(pos20.genes$prop.exp, na.rm = TRUE)
+  pos20.pval <- wilcox.test(x = na.omit(pos20.genes$prop.exp), y = na.omit(all.genes$prop.exp))$p.value
+  
+  pos20.plt <- ggplot(data = pos20.genes, aes(x = Gene.name, y = prop.exp * 100)) +
+    geom_col(fill = "darkgoldenrod") +
+    coord_flip() +
+    scale_y_continuous(limits = c(0, 100)) +
+    scale_x_discrete(limits = rev(pos20.genes$Gene.name)) +
+    labs(x = "", y = paste("Expression attributable (%)")) +
+    geom_abline(slope = 0, intercept = all.prop * 100, linetype = "dashed", colour = "red", linewidth=0.3) +
+    ggtitle(fix_cell_name(leuk)) +
+    theme_classic() +
+    theme(
+      axis.text.y = element_text(size = 6.5),
+      axis.text.x = element_text(size = 8),
+      axis.title = element_text(size = 8),
+      plot.title = element_text(size = 11)
+    )
+  
+  # Update lists objects
+  t20.lst[[length(t20.lst) + 1]] <- t20.plt
+  pos20.lst[[length(pos20.lst) + 1]] <- pos20.plt
+  stats.lst[[length(stats.lst) + 1]] <- c(leuk, all.prop, sig.prop, sig.pval, t20.prop, t20.pval, 
+                                          pos20.prop, pos20.pval)
 }
 
 ## Calculate stats for Naive-T group (CD4 + CD8)
@@ -168,49 +194,62 @@ cum.med <- comb %>%
   mutate(naiveT.group = `naive CD4 T-cell` + `naive CD8 T-cell`) %>%
   mutate_at(2:ncol(.), cummedian)
 
-## Create table 1
-tbl1 <- do.call(rbind.data.frame, tbl1.lst) %>%
-  `colnames<-`(c("Immune.cell", "all.prop", "sig.prop", "sig.pval", "t20.prop", "t20.pval")) %>%
-  mutate(Immune.cell = sapply(Immune.cell, fix_cell_name)) %>%
+## Create summary stats dataframe
+stats <- do.call(rbind.data.frame, stats.lst) %>%
+  `colnames<-`(c("Immune.cell", "all.prop", "sig.prop", "sig.p", "t20.prop", "t20.p", 
+                 "pos20.prop", "pos20.p")) %>%
   mutate_at(2:ncol(.), as.numeric) %>%
-  mutate(sig.logfc = log2(sig.prop / all.prop) %>% round(digits = 2), .after = sig.prop) %>%
-  mutate(sig.padj = p.adjust(sig.pval, method="BH") %>% formatC(format = "e", digits = 2), .after = sig.pval) %>%
-  mutate(t20.logfc = log2(t20.prop / all.prop) %>% round(digits = 2), .after = t20.prop) %>%
-  mutate(t20.padj = p.adjust(t20.pval, method="BH") %>% formatC(format = "e", digits = 2), .after = t20.pval) %>%
-  arrange(desc(t20.logfc))
+  mutate(Immune.cell = sapply(Immune.cell, fix_cell_name)) %>%
+  mutate(all.pct = (all.prop * 100) %>% round(2), .after = all.prop) %>%
+  mutate(sig.pct = (sig.prop * 100) %>% round(2), .after = sig.prop) %>%
+  mutate(sig.fc = log2(sig.prop / all.prop) %>% round(digits = 2), .after = sig.prop) %>%
+  mutate(sig.q = p.adjust(sig.p, method="BH") %>% formatC(format = "e", digits = 2), .after = sig.p) %>%
+  mutate(t20.pct = (t20.prop * 100) %>% round(2), .after = t20.prop) %>%
+  mutate(t20.fc = log2(t20.prop / all.prop) %>% round(digits = 2), .after = t20.prop) %>%
+  mutate(t20.q = p.adjust(t20.p, method="BH") %>% formatC(format = "e", digits = 2), .after = t20.p) %>%
+  mutate(pos20.pct = (pos20.prop * 100) %>% round(2), .after = pos20.prop) %>%
+  mutate(pos20.fc = log2(pos20.prop / all.prop) %>% round(digits = 2), .after = pos20.prop) %>%
+  mutate(pos20.q = p.adjust(pos20.p, method="BH") %>% formatC(format = "e", digits = 2), .after = pos20.p)
 
-# Write table 1 to disk
+## Create table 1 
+tbl1 <- stats %>%
+  dplyr::select(c(Immune.cell, all.pct, t20.pct, t20.q, sig.pct, sig.q)) %>%
+  arrange(desc(t20.pct))
+
+# Write to disk
 write.csv(tbl1, "manuscript/Table 1.csv", row.names = FALSE)
 
-## Create figure 1
+## Write supplementary stats table to disk (not included in manuscript)
+write.csv(stats, "manuscript/Supplementary stats.csv", row.names = FALSE)
+
+## Create figure 1 (top 20 genes)
+
+# Add stars to titles
+for (k in 1:length(t20.lst)){
+  pval <- stats$t20.q[k] %>% as.numeric()
+  title <- paste(stats$Immune.cell[k], assign_stars(pval))
+  t20.lst[[k]] <- t20.lst[[k]] + ggtitle(title)
+}
 
 # Order by highest fold change
-fig1.order <- match(tbl1$Immune.cell, comb$Immune.cell %>% unique() %>% fix_cell_name())
-fig1.lst <- fig1.lst[fig1.order]
-
-# Add stars to title
-for (k in 1:length(fig1.lst)){
-  pval <- tbl1$t20.padj[k] %>% as.numeric()
-  title <- paste(tbl1$Immune.cell[k], assign_stars(pval))
-  fig1.lst[[k]] <- fig1.lst[[k]] + ggtitle(title)
-}
+t20.lst <- t20.lst[order(stats$t20.prop, decreasing = TRUE)]
 
 # Remove y axis labels from subplots not on left
 for (k in c(2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18)){
-  fig1.lst[[k]] <- fig1.lst[[k]] + theme(axis.text.y = element_blank())
+  t20.lst[[k]] <- t20.lst[[k]] + theme(axis.text.y = element_blank())
 }
 
 # Combine subplots
-fig1 <- ggarrange(plotlist = fig1.lst,
+fig1 <- ggarrange(plotlist = t20.lst,
                   ncol = 3, nrow = 6,
                   widths = c(1.17, 1, 1, 1),
                   common.legend = TRUE,
                   legend = "bottom")
 
-# Write figure 1 to disk
+# Write to disk
 ggsave("manuscript/Figure 1.tiff", device = "tiff", plot = fig1, dpi = 300, width = 180, height = 270, unit = "mm")
 
-## Create figure 2
+## Create figure 2 (all ageing genes)
 fig2 <- ggplot(data = cum.med, aes(x = rank, y = naiveT.group * 100)) +
   geom_path(colour = "gray50", linewidth = 1) +
   geom_abline(slope = 0, intercept = naiveT.stats$all.prop * 100, colour = "red", linetype = "dashed") +
@@ -218,7 +257,33 @@ fig2 <- ggplot(data = cum.med, aes(x = rank, y = naiveT.group * 100)) +
   scale_y_continuous(limits = c(0, 100)) +
   theme_classic()
 
+# Write to disk
 ggsave("manuscript/Figure 2.tiff", device = "tiff", fig2, dpi=300, width=180, height=120, unit = "mm")
+
+## Create supplementary figure 1 (top 20 positive genes)
+
+# Add stars to titles
+for (k in 1:length(pos20.lst)){
+  pval <- stats$pos20.q[k] %>% as.numeric()
+  title <- paste(stats$Immune.cell[k], assign_stars(pval))
+  pos20.lst[[k]] <- pos20.lst[[k]] + ggtitle(title)
+}
+
+# Order by highest fold change
+pos20.lst <- pos20.lst[order(stats$pos20.prop, decreasing = TRUE)]
+
+# Remove y axis labels from subplots not on left
+for (k in c(2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18)){
+  pos20.lst[[k]] <- pos20.lst[[k]] + theme(axis.text.y = element_blank())
+}
+
+# Combine subplots
+supfig1 <- ggarrange(plotlist = pos20.lst,
+                     ncol = 6, nrow = 3,
+                     widths = c(1.17, 1, 1, 1))
+
+# Write to disk
+ggsave("manuscript/Supplementary figure 1.tiff", device = "tiff", plot = supfig1, dpi = 300, width = 297, height = 175, unit = "mm")
 
 
 
