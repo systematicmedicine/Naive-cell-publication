@@ -99,7 +99,7 @@ for (leuk in unique(comb$Immune.cell)){
     scale_y_continuous(limits = c(0, 100)) +
     scale_x_discrete(limits = rev(t20.genes$Gene.name)) +
     labs(x = "", y = paste("Expression attributable (%)")) +
-    geom_abline(slope = 0, intercept = all.prop * 100, linetype = "dashed", colour = "red", linewidth=0.3) +
+    geom_abline(slope = 0, intercept = all.prop * 100, linetype = "dashed", colour = "red", linewidth = 0.3) +
     ggtitle(fix_cell_name(leuk)) +
     theme_classic() +
     theme(
@@ -119,22 +119,24 @@ for (leuk in unique(comb$Immune.cell)){
   pos20.prop <- median(pos20.genes$prop.exp, na.rm = TRUE)
   pos20.pval <- wilcox.test(x = na.omit(pos20.genes$prop.exp), y = na.omit(all.genes$prop.exp))$p.value
   
-  pos20.plt <- ggplot(data = pos20.genes, aes(x = Gene.name, y = prop.exp * 100)) +
-    geom_col(fill = "darkgoldenrod") +
+  pos20.plt <- ggplot(data = pos20.genes, aes(x = Gene.name, y = prop.exp * 100, fill = direction)) +
+    geom_col() +
     coord_flip() +
+    scale_fill_manual(values = "darkgoldenrod") +
     scale_y_continuous(limits = c(0, 100)) +
     scale_x_discrete(limits = rev(pos20.genes$Gene.name)) +
     labs(x = "", y = paste("Expression attributable (%)")) +
-    geom_abline(slope = 0, intercept = all.prop * 100, linetype = "dashed", colour = "red", linewidth=0.3) +
+    geom_abline(slope = 0, intercept = all.prop * 100, linetype = "dashed", colour = "red", linewidth  =0.3) +
     ggtitle(fix_cell_name(leuk)) +
     theme_classic() +
     theme(
-      axis.text.y = element_text(size = 6.5),
-      axis.text.x = element_text(size = 8),
-      axis.title = element_text(size = 8),
+      axis.text.y = element_text(size = 4.6),
+      axis.text.x = element_text(size = 6.5),
+      axis.title = element_text(size = 9),
       plot.title = element_text(size = 11)
-    )
-  
+    ) +
+    guides(fill = guide_legend(title = "Direction of expression change"))
+         
   # Update lists objects
   t20.lst[[length(t20.lst) + 1]] <- t20.plt
   pos20.lst[[length(pos20.lst) + 1]] <- pos20.plt
@@ -258,7 +260,7 @@ fig2 <- ggplot(data = cum.med, aes(x = rank, y = naiveT.group * 100)) +
   theme_classic()
 
 # Write to disk
-ggsave("manuscript/Figure 2.tiff", device = "tiff", fig2, dpi=300, width=180, height=120, unit = "mm")
+ggsave("manuscript/Figure 2.tiff", device = "tiff", fig2, dpi = 300, width = 180, height = 120, unit = "mm")
 
 ## Create supplementary figure 1 (top 20 positive genes)
 
@@ -270,20 +272,22 @@ for (k in 1:length(pos20.lst)){
 }
 
 # Order by highest fold change
-pos20.lst <- pos20.lst[order(stats$pos20.prop, decreasing = TRUE)]
+pos20.lst <- pos20.lst[order(stats$t20.prop, decreasing = TRUE)]
 
 # Remove y axis labels from subplots not on left
-for (k in c(2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18)){
+for (k in c(2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18)){
   pos20.lst[[k]] <- pos20.lst[[k]] + theme(axis.text.y = element_blank())
 }
 
 # Combine subplots
 supfig1 <- ggarrange(plotlist = pos20.lst,
-                     ncol = 6, nrow = 3,
-                     widths = c(1.17, 1, 1, 1))
+                     ncol = 3, nrow = 6,
+                     widths = c(1.17, 1, 1, 1),
+                     common.legend = TRUE,
+                     legend = "bottom")
 
 # Write to disk
-ggsave("manuscript/Supplementary figure 1.tiff", device = "tiff", plot = supfig1, dpi = 300, width = 297, height = 175, unit = "mm")
+ggsave("manuscript/Supplementary figure 1.tiff", device = "tiff", plot = supfig1, dpi = 300, width = 180, height = 270, unit = "mm")
 
 
 
