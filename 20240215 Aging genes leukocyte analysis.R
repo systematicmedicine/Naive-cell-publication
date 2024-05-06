@@ -233,7 +233,7 @@ for (k in 1:length(t20.lst)){
   t20.lst[[k]] <- t20.lst[[k]] + ggtitle(title)
 }
 
-# Order by highest fold change
+# Order subplots (highest median proportion of expression first)
 t20.lst <- t20.lst[order(stats$t20.prop, decreasing = TRUE)]
 
 # Remove y axis labels from subplots not on left
@@ -271,7 +271,7 @@ for (k in 1:length(pos20.lst)){
   pos20.lst[[k]] <- pos20.lst[[k]] + ggtitle(title)
 }
 
-# Order by highest fold change
+# Order subplots (highest median proportion of expression first)
 pos20.lst <- pos20.lst[order(stats$t20.prop, decreasing = TRUE)]
 
 # Remove y axis labels from subplots not on left
